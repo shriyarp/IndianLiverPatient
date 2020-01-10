@@ -1,0 +1,289 @@
+---
+title: "Indian Liver Patient Predictions"
+author: "Shriya Reddy P."
+date: "11/01/2020"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+**files and dataset avaliable on github:** <https://github.com/shriyarp/IndianLiverPatient>
+
+# Introduction
+
+The goal of the project is to predict if a person is a liver patient based on a number of predictors including age, gender, total bilurubin, total proteins, etc.
+
+The dataset consists of 583 observations. 75 percent of the observations will belong to a training dataset while the remaining 25 percent of the observations will belong to the test dataset. 
+
+Each observation contains values for the person's age, gender, total bilurubin, direct bilurubin, total proteins, albumin,alkaline phosphates, Alamine Aminotransferase, Aspartate Aminotransferase, Albumin_and_Globulin_Ratio and a value that classifies the person as a patient or not
+
+The steps taken towards this goal are as follows:-
+
+1. Load the data
+2. Analyse the data
+3. Transform the data
+4. Analyze algorithms to create a model
+5. Make Predictions
+
+```{r install packages, echo=FALSE, include=FALSE}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+install.packages("caret", repos = "http://cran.us.r-project.org")
+install.packages("data.table", repos = "http://cran.us.r-project.org")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+library(data.table)
+library(caret)
+library(tidyverse)
+library(dplyr)
+```
+
+# Analysis/Methods
+
+## Loading Data
+The dataset was downloaded from: <https://www.kaggle.com/uciml/indian-liver-patient-records>
+
+**The dataset along with the files can be accessed on github:** <https://github.com/shriyarp/IndianLiverPatient>
+
+```{r load csv}
+indian_liver_patient <- read.csv("indian_liver_patient.csv", header = TRUE)
+```
+
+The first 6 rows of the data loaded are given below:
+```{r data samples, echo=FALSE}
+head(indian_liver_patient) %>% knitr::kable(format = "pandoc", caption = "Example rows") 
+```
+
+## Analysing Data
+The dimensions of the entire dataset is:
+```{r dataset dim, echo=FALSE}
+dimension <- dim(indian_liver_patient)
+names(dimension) <- c("rows","columns")
+dimension
+```
+
+The column names and types of the dataset are:
+```{r column info, echo=FALSE}
+colTypes <- c()
+for (i in c(1:dimension[2])){
+  colTypes <- c(colTypes,class(indian_liver_patient[,i]))
+}
+names(colTypes) <- colnames(indian_liver_patient)
+data.frame(colTypes)
+```
+
+The number of missing values in each column is given below:-
+```{r missing values, echo=FALSE}
+missingNumber <- c()
+for (i in c(1:dimension[2])){
+  missingNumber <- c(missingNumber,sum(is.na(indian_liver_patient[,i])))
+}
+names(missingNumber) <- colnames(indian_liver_patient)
+data.frame(missingNumber)
+```
+
+The distribution of each column is as follows:-
+
+**Age**
+
+```{r age distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Age) %>% ggplot(aes(x=Age)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Age)), mean = mean(indian_liver_patient$Age))
+```
+
+**Gender**
+
+```{r Gender distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% group_by(Gender) %>% summarise(percentage = round(n()*100/dimension[1])) %>% as.data.table()
+```
+
+**Total_Bilirubin**
+
+```{r Total_Bilirubin distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Total_Bilirubin) %>% ggplot(aes(x=Total_Bilirubin)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Total_Bilirubin)), mean = mean(indian_liver_patient$Total_Bilirubin))
+```
+
+**Direct_Bilirubin**
+
+```{r Direct_Bilirubin distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Direct_Bilirubin) %>% ggplot(aes(x=Direct_Bilirubin)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Direct_Bilirubin)), mean = mean(indian_liver_patient$Direct_Bilirubin))
+```
+
+**Alkaline_Phosphotase**
+
+```{r Alkaline_Phosphotase distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Alkaline_Phosphotase) %>% ggplot(aes(x=Alkaline_Phosphotase)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Alkaline_Phosphotase)), mean = mean(indian_liver_patient$Alkaline_Phosphotase))
+```
+
+**Alamine_Aminotransferase**
+
+```{r Alamine_Aminotransferase distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Alamine_Aminotransferase) %>% ggplot(aes(x=Alamine_Aminotransferase)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Alamine_Aminotransferase)), mean = mean(indian_liver_patient$Alamine_Aminotransferase))
+```
+
+**Aspartate_Aminotransferase**
+
+```{r Aspartate_Aminotransferase distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Aspartate_Aminotransferase) %>% ggplot(aes(x=Aspartate_Aminotransferase)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Aspartate_Aminotransferase)), mean = mean(indian_liver_patient$Aspartate_Aminotransferase))
+```
+
+**Total_Protiens**
+
+```{r Total_Protiens distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Total_Protiens) %>% ggplot(aes(x=Total_Protiens)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Total_Protiens)), mean = mean(indian_liver_patient$Total_Protiens))
+```
+
+**Albumin**
+
+```{r Albumin distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Albumin) %>% ggplot(aes(x=Albumin)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Albumin)), mean = mean(indian_liver_patient$Albumin))
+```
+
+**Albumin_and_Globulin_Ratio**
+
+```{r Albumin_and_Globulin_Ratio distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% select(Albumin_and_Globulin_Ratio) %>% ggplot(aes(x=Albumin_and_Globulin_Ratio)) + geom_histogram(bins = 10)
+data.table(stdDev = c(sd(indian_liver_patient$Albumin_and_Globulin_Ratio, na.rm = TRUE)), mean = mean(indian_liver_patient$Albumin_and_Globulin_Ratio, na.rm = TRUE))
+```
+
+**isLiverPatient**
+
+```{r isLiverPatient distribution, echo=FALSE, out.width="40%"}
+indian_liver_patient %>% group_by(Dataset) %>% summarise(percentage = round(n()*100/dimension[1])) %>% as.data.frame()
+```
+
+## Transform Data
+From the above distributions and information, we observe that the Albumin_and_Globulin_Ratio column is missing 4 values and we also observe that the Dataset column(which indicates if a person is a liver patient) is stored as in integer despite being a categorical variable
+
+Thus, we fill in the 4 missing values of the Albumin_and_Globulin_Ratio column with the average value of the column
+```{r fill missing}
+#identify missing idexes
+indices <- which(is.na(indian_liver_patient$Albumin_and_Globulin_Ratio))
+#calculate mean of the column
+mean_agratio <- round(mean(indian_liver_patient$Albumin_and_Globulin_Ratio, na.rm = TRUE)*100)/100
+#replace missing values with mean
+for (i in indices) {
+  indian_liver_patient$Albumin_and_Globulin_Ratio[i] <- mean_agratio
+}
+
+```
+
+We also tranform the dataset column by changing its type from 'integer' to 'factor'
+```{r change Dataset type}
+indian_liver_patient <- indian_liver_patient %>% mutate(Dataset = factor(Dataset))
+
+```
+
+We now seperate out the training and test datasets
+```{r seperate dataset}
+set.seed(1)
+#create test index
+index <- sample(nrow(indian_liver_patient), round(0.25*nrow(indian_liver_patient)))
+
+train <- indian_liver_patient[-index,]
+test <- indian_liver_patient[index,]
+```
+
+## Evaluate Algorithms to create a model
+
+We first create a method for validating our data
+```{r trControl}
+control <- trainControl(method="cv", number=10)
+```
+
+We evaluate using 8 different algorithms:
+
+1. Quadratic Discriminant Analysis
+2. AdaBoost Classification Trees
+3. Naive Bayes
+4. Linear Discriminant Analysis
+5. CART
+6. K-nearest neighbours
+7. Support Vector Machines with Radial Basis Function Kernel
+8. Randowm Forest
+
+```{r build models}
+#Quadratic Discriminant Analysis
+set.seed(4)
+fit.qda <- train(Dataset~., data=train, method="qda", trControl=control)
+
+#AdaBoost Classification Trees
+set.seed(4)
+fit.ab <- train(Dataset~., data=train, method="adaboost", trControl=control)
+
+#Naive Bayes
+set.seed(4)
+fit.nb <- train(Dataset~., data=train, method="naive_bayes", trControl=control)
+
+# Linear Discriminant Analysis
+set.seed(4)
+fit.lda <- train(Dataset~., data=train, method="lda",  trControl=control)
+
+# CART
+set.seed(4)
+fit.cart <- train(Dataset~., data=train, method="rpart",  trControl=control)
+
+# K-nearest neighbours
+set.seed(4)
+fit.knn <- train(Dataset~., data=train, method="knn",  trControl=control)
+
+# Support Vector Machines with Radial Basis Function Kernel
+set.seed(4)
+fit.svm <- train(Dataset~., data=train, method="svmRadial",  trControl=control)
+
+# Random Forest
+set.seed(4)
+fit.rf <- train(Dataset~., data=train, method="rf",  trControl=control)
+
+```
+
+Post Building the models, we now select the best model based on accuracy
+```{r summarise model}
+results <- resamples(list(qda = fit.qda, ab = fit.ab, nb=fit.nb, lda=fit.lda, cart=fit.cart, knn=fit.knn, svm=fit.svm, rf=fit.rf))
+summary(results)
+```
+
+```{r model plot, echo=FALSE}
+dotplot(results)
+```
+
+Based on the results, we now find the the best fit is AdaBoost Classification Trees
+The fit for AdaBoost Classification Trees along with accuracy metrics is:
+```{r adaboost model, echo=FALSE}
+fit.ab
+```
+
+## Make Predictions
+We can now proceed to make predictions based on the AdaBoost Classification Trees
+```{r predictions}
+#predict 
+y_hat <- predict(fit.ab,test)
+```
+
+
+# Result
+The confusion matrix obtained is:
+```{r confusion matrix}
+confusionMatrix(y_hat,test$Dataset)
+```
+
+from the confusion matrix and the other readings above, we find that:-
+
+1. The accuracy of the predictions stands at 69.9% (approx. 70%)
+2. The sensitivity of the data is 85.15%
+3. The specificity of the data is 33.56%
+
+Therefore, the prediction are correct 70% of the time. On recipt of a positive result, the probability of a correct result is 85%. The sensitivity is relatively high, which is a good things for medical cases. However, the specificity of the data is very low, meaning that, on receipt of a negative outcome, the chances that the person is not actually a liver patient is 33.56%. This also could mean that people who are actually liver patients could be ignored.
+
+
+# Conculsion
+After, evaluating the dataset and performing the necessay tranformations and choosing appropriate algorithms, The best algorithm found in this case was the AdaBoost Classification Trees, giving an accuracy of approximately 70% and a TPR of 85%. However, models like k nearest neighbours, support vector machine and random forest were not far behind in terms of accuracy. Therefore, it is not possible to conclude that only the adaboost classification trees algorithm was the best algorithm to use out of the 8 chosen.
+Being in possession of more domain knowledge would probably be beneficial in order to determine the best kind of algorithm for the kind of data that has been provided. However despite, having a relatively low number of observations in the dataset, the predictions obtained were satisfactorily accurate.
